@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a3a2f" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <title>Lista de Compras</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,600;9..144,700&family=Nunito:wght@500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-deep: #143028;
+      --bg-mid: #1f4a3a;
+      --bg-soft: #e8f2ec;
+      --surface: rgba(255, 255, 255, 0.92);
+      --ink: #14241e;
+      --ink-soft: #3d5a4e;
+      --accent: #e85d3a;
+      --accent-press: #c94828;
+      --done: #2f7d5b;
+      --line: rgba(20, 58, 47, 0.12);
+      --shadow: 0 10px 28px rgba(20, 48, 40, 0.12);
+      --radius: 18px;
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+      --safe-top: env(safe-area-inset-top, 0px);
+    }
+
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    html, body {
+      margin: 0;
+      min-height: 100%;
+    }
+
+    body {
+      font-family: "Nunito", system-ui, sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(120% 80% at 10% -10%, #f4c27a 0%, transparent 45%),
+        radial-gradient(90% 70% at 100% 0%, #7eb89a 0%, transparent 40%),
+        linear-gradient(165deg, var(--bg-soft) 0%, #d5e8dc 45%, #c5ddd0 100%);
+      background-attachment: fixed;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      opacity: 0.035;
+      background-image: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M30 8c-4 8-12 12-18 14 8 2 14 8 18 16 4-8 10-14 18-16-6-2-14-6-18-14z' fill='%23143028'/%3E%3C/svg%3E");
+    }
+
+    .app {
+      position: relative;
+      max-width: 480px;
+      margin: 0 auto;
+      padding: calc(16px + var(--safe-top)) 14px calc(28px + var(--safe-bottom));
+    }
+
+    header {
+      margin-bottom: 18px;
+      animation: rise 0.55s ease both;
+    }
+
+    .brand {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: clamp(2rem, 8vw, 2.6rem);
+      font-weight: 700;
+      line-height: 1.05;
+      letter-spacing: -0.03em;
+      color: var(--bg-deep);
+      margin: 0 0 6px;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--ink-soft);
+      font-size: 0.98rem;
+      font-weight: 600;
+    }
+
+    .progress-wrap {
+      margin-top: 14px;
+      background: rgba(255, 255, 255, 0.55);
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      padding: 4px;
+      overflow: hidden;
+    }
+
+    .progress-bar {
+      height: 10px;
+      width: 0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--done), #4aa87a);
+      transition: width 0.35s ease;
+    }
+
+    .stats {
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+      margin-top: 10px;
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: var(--ink-soft);
+    }
+
+    .filters {
+      display: flex;
+      gap: 8px;
+      margin: 16px 0 14px;
+      animation: rise 0.55s ease 0.08s both;
+    }
+
+    .filter {
+      flex: 1;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.7);
+      color: var(--ink-soft);
+      font: inherit;
+      font-weight: 800;
+      font-size: 0.85rem;
+      padding: 10px 8px;
+      border-radius: 999px;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.2s ease, color 0.2s ease;
+    }
+
+    .filter.active {
+      background: var(--bg-deep);
+      color: #f4fff8;
+      border-color: var(--bg-deep);
+    }
+
+    .filter:active {
+      transform: scale(0.97);
+    }
+
+    section {
+      margin-bottom: 18px;
+      animation: rise 0.55s ease both;
+    }
+
+    section:nth-of-type(1) { animation-delay: 0.12s; }
+    section:nth-of-type(2) { animation-delay: 0.2s; }
+
+    .section-title {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 1.35rem;
+      margin: 0 0 10px 4px;
+      color: var(--bg-deep);
+    }
+
+    .list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .item {
+      display: grid;
+      grid-template-columns: auto 1fr auto;
+      align-items: center;
+      gap: 10px;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      padding: 10px 10px 10px 12px;
+      box-shadow: var(--shadow);
+      transition: opacity 0.25s ease, transform 0.2s ease, background 0.2s ease;
+    }
+
+    .item.checked {
+      background: rgba(232, 242, 236, 0.95);
+      opacity: 0.72;
+    }
+
+    .item.checked .name {
+      text-decoration: line-through;
+      color: var(--ink-soft);
+    }
+
+    .item.hidden {
+      display: none;
+    }
+
+    .check {
+      width: 28px;
+      height: 28px;
+      border-radius: 9px;
+      border: 2px solid #8aafa0;
+      background: #fff;
+      display: grid;
+      place-items: center;
+      cursor: pointer;
+      flex-shrink: 0;
+      transition: background 0.2s ease, border-color 0.2s ease, transform 0.15s ease;
+    }
+
+    .check:active {
+      transform: scale(0.92);
+    }
+
+    .item.checked .check {
+      background: var(--done);
+      border-color: var(--done);
+    }
+
+    .check svg {
+      width: 16px;
+      height: 16px;
+      opacity: 0;
+      transform: scale(0.6);
+      transition: opacity 0.15s ease, transform 0.15s ease;
+    }
+
+    .item.checked .check svg {
+      opacity: 1;
+      transform: scale(1);
+    }
+
+    .meta {
+      min-width: 0;
+    }
+
+    .name {
+      font-weight: 800;
+      font-size: 1rem;
+      line-height: 1.2;
+      margin: 0;
+    }
+
+    .hint {
+      margin: 2px 0 0;
+      font-size: 0.78rem;
+      font-weight: 600;
+      color: var(--ink-soft);
+    }
+
+    .qty {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      background: #f0f7f3;
+      border-radius: 999px;
+      padding: 4px;
+    }
+
+    .qty button {
+      width: 36px;
+      height: 36px;
+      border: 0;
+      border-radius: 50%;
+      background: var(--bg-deep);
+      color: #f4fff8;
+      font-size: 1.25rem;
+      font-weight: 700;
+      line-height: 1;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: background 0.15s ease, transform 0.15s ease;
+    }
+
+    .qty button:active {
+      transform: scale(0.92);
+      background: var(--accent);
+    }
+
+    .qty button:disabled {
+      opacity: 0.35;
+      cursor: default;
+      transform: none;
+      background: #7a9488;
+    }
+
+    .qty-value {
+      min-width: 2.2rem;
+      text-align: center;
+      font-weight: 800;
+      font-size: 1.05rem;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .unit {
+      display: block;
+      font-size: 0.68rem;
+      font-weight: 700;
+      color: var(--ink-soft);
+      line-height: 1;
+      margin-top: 1px;
+    }
+
+    .add-panel,
+    .cupom-panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px;
+      margin: 4px 0 16px;
+      animation: rise 0.55s ease 0.1s both;
+    }
+
+    .add-panel h2,
+    .cupom-panel h2 {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 1.2rem;
+      margin: 0 0 10px;
+      color: var(--bg-deep);
+    }
+
+    .cupom-meta {
+      margin: 0 0 10px;
+      color: var(--ink-soft);
+      font-size: 0.9rem;
+      font-weight: 700;
+      line-height: 1.35;
+    }
+
+    .cupom-meta strong {
+      color: var(--bg-deep);
+      font-weight: 800;
+    }
+
+    .cupom-actions {
+      display: grid;
+      gap: 8px;
+    }
+
+    .cupom-actions button {
+      border: 0;
+      border-radius: 14px;
+      background: var(--bg-deep);
+      color: #f4fff8;
+      font: inherit;
+      font-weight: 800;
+      font-size: 0.95rem;
+      padding: 13px 12px;
+      cursor: pointer;
+    }
+
+    .cupom-actions button.secondary {
+      background: #eef6f1;
+      color: var(--bg-deep);
+      border: 1px solid var(--line);
+    }
+
+    .cupom-actions button:active {
+      transform: scale(0.98);
+    }
+
+    .missing-box {
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px dashed var(--line);
+      font-size: 0.86rem;
+      font-weight: 700;
+      color: var(--ink-soft);
+      line-height: 1.4;
+    }
+
+    .missing-box span {
+      color: var(--accent-press);
+    }
+
+    .add-form {
+      display: grid;
+      gap: 8px;
+    }
+
+    .add-row {
+      display: grid;
+      grid-template-columns: 1fr 88px;
+      gap: 8px;
+    }
+
+    .add-form input,
+    .add-form select {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #f7fbf8;
+      border-radius: 12px;
+      padding: 12px 12px;
+      font: inherit;
+      font-weight: 700;
+      color: var(--ink);
+      outline: none;
+    }
+
+    .add-form input:focus,
+    .add-form select:focus {
+      border-color: #6ea38b;
+      box-shadow: 0 0 0 3px rgba(47, 125, 91, 0.15);
+    }
+
+    .add-form button[type="submit"] {
+      border: 0;
+      border-radius: 14px;
+      background: var(--accent);
+      color: #fffaf7;
+      font: inherit;
+      font-weight: 800;
+      font-size: 1rem;
+      padding: 13px 12px;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.2s ease;
+    }
+
+    .add-form button[type="submit"]:active {
+      transform: scale(0.98);
+      background: var(--accent-press);
+    }
+
+    .item {
+      position: relative;
+    }
+
+    .item.custom {
+      grid-template-columns: auto 1fr auto auto;
+    }
+
+    .remove {
+      width: 36px;
+      height: 36px;
+      border: 0;
+      border-radius: 50%;
+      background: #f7e4de;
+      color: var(--accent-press);
+      font-size: 1.1rem;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+    }
+
+    .remove:active {
+      transform: scale(0.92);
+    }
+
+    .actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      animation: rise 0.55s ease 0.28s both;
+    }
+
+    .actions button {
+      flex: 1;
+      border: 1px solid var(--line);
+      background: rgba(255, 255, 255, 0.75);
+      color: var(--ink);
+      font: inherit;
+      font-weight: 800;
+      font-size: 0.9rem;
+      padding: 12px 10px;
+      border-radius: 14px;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.2s ease;
+    }
+
+    .actions button:active {
+      transform: scale(0.97);
+    }
+
+    .actions .danger {
+      color: var(--accent-press);
+    }
+
+    footer {
+      text-align: center;
+      margin-top: 18px;
+      color: var(--ink-soft);
+      font-size: 0.8rem;
+      font-weight: 600;
+    }
+
+    @keyframes rise {
+      from {
+        opacity: 0;
+        transform: translateY(12px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after {
+        animation: none !important;
+        transition: none !important;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <h1 class="brand">Lista</h1>
+      <p class="subtitle">Mercado · cupom Mateus de 04/10</p>
+      <div class="progress-wrap" aria-hidden="true">
+        <div class="progress-bar" id="progressBar"></div>
+      </div>
+      <div class="stats">
+        <span id="statsText">0 de 29</span>
+        <span id="filterHint">Todos</span>
+      </div>
+    </header>
+
+    <div class="filters" role="tablist" aria-label="Filtrar itens">
+      <button class="filter active" data-filter="all" type="button">Todos</button>
+      <button class="filter" data-filter="pending" type="button">Falta</button>
+      <button class="filter" data-filter="done" type="button">Feitos</button>
+    </div>
+
+    <section class="cupom-panel" aria-label="Compras do cupom">
+      <h2>Compras do cupom</h2>
+      <p class="cupom-meta">
+        Mateus · 04/10/2026 · 67 itens<br />
+        Total pago: <strong>R$ 939,71</strong>
+      </p>
+      <div class="cupom-actions">
+        <button type="button" id="applyReceipt">Marcar o que veio no cupom</button>
+        <button type="button" class="secondary" id="showMissing">Ver o que ainda faltou da lista</button>
+      </div>
+      <div class="missing-box" id="missingBox" hidden></div>
+    </section>
+
+    <section class="add-panel" aria-label="Adicionar item">
+      <h2>Adicionar item</h2>
+      <form class="add-form" id="addForm">
+        <input id="newName" name="name" type="text" placeholder="Nome do item" required autocomplete="off" />
+        <div class="add-row">
+          <select id="newSection" name="section" aria-label="Categoria">
+            <option value="alimentos">Alimentos</option>
+            <option value="higiene">Higiene e limpeza</option>
+            <option value="outros">Outros</option>
+          </select>
+          <input id="newQty" name="qty" type="number" min="0" step="1" value="1" inputmode="numeric" aria-label="Quantidade" />
+        </div>
+        <button type="submit">Adicionar na lista</button>
+      </form>
+    </section>
+
+    <main id="lists"></main>
+
+    <div class="actions">
+      <button type="button" id="resetChecks">Desmarcar tudo</button>
+      <button type="button" class="danger" id="resetAll">Zerar quantidades</button>
+    </div>
+
+    <footer id="footerText">Salvo neste aparelho</footer>
+  </div>
+
+  <script>
+    const STORAGE_KEY = "lista-compras-v1";
+    const CUSTOM_KEY = "lista-compras-custom-v1";
+    const CUPOM_APPLIED_KEY = "lista-compras-cupom-aplicado-v1";
+
+    // Itens da lista original que bateram com o cupom Mateus (04/10/2026)
+    const RECEIPT_BOUGHT = {
+      macarrao: { qty: 15, note: "cupom: ~15 pacotes de massa" },
+      arroz: { qty: 12, note: "cupom: 12 kg" },
+      vinagre: { qty: 1, note: "cupom: 1 (lista pedia 2)" },
+      sal: { qty: 3, note: "cupom: 3" },
+      acucar: { qty: 5, note: "cupom: 5" },
+      cafe: { qty: 3, note: "cupom: 3 (lista pedia 5)" },
+      cuscuz: { qty: 8, note: "cupom: 8 flocão (pedia 15)" },
+      "leite-noah": { qty: 2, note: "cupom: leite em pó Ninho x2" },
+      manteiga: { qty: 2, note: "cupom: margarina Qualy x2" },
+      danone: { qty: 2, note: "cupom: iogurte Isis x2" },
+      verdura: { qty: 1, note: "cupom: verduras e legumes" },
+      linguica: { qty: 2, note: "cupom: calabresa x2" },
+      colorau: { qty: 1, note: "cupom: colorífico" },
+      sabonete: { qty: 2, note: "cupom: Senador x2" },
+      pasta: { qty: 2, note: "cupom: Oral-B x2" },
+      "pasta-noah": { qty: 1, note: "cupom: coberto com a pasta" },
+      "sabao-po": { qty: 3, note: "cupom: Minerva x3" },
+      "papel-higienico": { qty: 1, note: "cupom: 1 pacote" },
+      absorvente: { qty: 1, note: "cupom: Carefree" },
+      ob: { qty: 1, note: "cupom: Intimus interno" },
+    };
+
+    const BASE_CATALOG = [
+      {
+        id: "alimentos",
+        title: "Alimentos",
+        items: [
+          { id: "macarrao", name: "Fardo de macarrão", qty: 1, unit: "", note: "qtd. não especificada" },
+          { id: "arroz", name: "Arroz", qty: 12, unit: "kg" },
+          { id: "oleo", name: "Óleo", qty: 4, unit: "" },
+          { id: "vinagre", name: "Vinagre", qty: 2, unit: "" },
+          { id: "sal", name: "Sal", qty: 3, unit: "" },
+          { id: "acucar", name: "Açúcar", qty: 4, unit: "" },
+          { id: "cafe", name: "Café", qty: 5, unit: "" },
+          { id: "cuscuz", name: "Cuscuz", qty: 15, unit: "" },
+          { id: "leite-noah", name: "Leite pro Noah", qty: 1, unit: "" },
+          { id: "farinha", name: "Farinha", qty: 1, unit: "" },
+          { id: "manteiga", name: "Manteiga", qty: 2, unit: "" },
+          { id: "pao-integral", name: "Pão integral", qty: 2, unit: "" },
+          { id: "danone", name: "Danone", qty: 1, unit: "" },
+          { id: "verdura", name: "Verdura", qty: 1, unit: "", note: "qtd. não especificada" },
+          { id: "mortadela", name: "Mortadela grande", qty: 1, unit: "" },
+          { id: "linguica", name: "Linguiça calabresa", qty: 1, unit: "" },
+          { id: "colorau", name: "Colorau", qty: 1, unit: "" },
+        ],
+      },
+      {
+        id: "higiene",
+        title: "Higiene e limpeza",
+        items: [
+          { id: "sabonete", name: "Sabonete", qty: 2, unit: "" },
+          { id: "pasta", name: "Pasta de dente", qty: 2, unit: "" },
+          { id: "pasta-noah", name: "Pasta de dente do Noah", qty: 1, unit: "" },
+          { id: "sabao-barra", name: "Sabão em barra", qty: 1, unit: "" },
+          { id: "sabao-po", name: "Sabão em pó grande", qty: 1, unit: "" },
+          { id: "papel-higienico", name: "Papel higiênico", qty: 1, unit: "" },
+          { id: "absorvente", name: "Absorvente", qty: 1, unit: "" },
+          { id: "ob", name: "OB", qty: 1, unit: "" },
+          { id: "detergente", name: "Detergente grande", qty: 1, unit: "" },
+          { id: "amaciante", name: "Amaciante", qty: 1, unit: "" },
+          { id: "perfume-noah", name: "Perfume para Noah", qty: 1, unit: "" },
+          { id: "papel-graxa", name: "Papel graxa", qty: 1, unit: "" },
+        ],
+      },
+      {
+        id: "outros",
+        title: "Outros",
+        items: [],
+      },
+    ];
+
+    function baseDefaults() {
+      const defaults = {};
+      for (const section of BASE_CATALOG) {
+        for (const item of section.items) {
+          defaults[item.id] = { qty: item.qty, checked: false };
+        }
+      }
+      return defaults;
+    }
+
+    function loadCustomItems() {
+      try {
+        const raw = localStorage.getItem(CUSTOM_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+          .filter((item) => item && item.id && item.name)
+          .map((item) => ({
+            id: String(item.id),
+            name: String(item.name),
+            qty: Math.max(0, Number(item.qty) || 1),
+            unit: item.unit ? String(item.unit) : "",
+            sectionId: ["alimentos", "higiene", "outros"].includes(item.sectionId)
+              ? item.sectionId
+              : "outros",
+            custom: true,
+          }));
+      } catch {
+        return [];
+      }
+    }
+
+    function saveCustomItems() {
+      localStorage.setItem(CUSTOM_KEY, JSON.stringify(customItems));
+    }
+
+    function buildCatalog() {
+      return BASE_CATALOG.map((section) => ({
+        ...section,
+        items: [
+          ...section.items.map((item) => ({ ...item, custom: false })),
+          ...customItems.filter((item) => item.sectionId === section.id),
+        ],
+      }));
+    }
+
+    function defaultQtyFor(id) {
+      const base = baseDefaults()[id];
+      if (base) return base.qty;
+      const custom = customItems.find((item) => item.id === id);
+      return custom ? custom.qty : 1;
+    }
+
+    function loadState() {
+      const defaults = baseDefaults();
+      for (const item of customItems) {
+        defaults[item.id] = { qty: item.qty, checked: false };
+      }
+
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return structuredClone(defaults);
+
+        const parsed = JSON.parse(raw);
+        const state = structuredClone(defaults);
+
+        // Preserva marcações e quantidades já editadas no aparelho
+        for (const id of Object.keys(parsed)) {
+          if (!parsed[id] || typeof parsed[id] !== "object") continue;
+          if (!(id in state)) continue;
+          state[id].qty = Math.max(0, Number(parsed[id].qty) || 0);
+          state[id].checked = Boolean(parsed[id].checked);
+        }
+        return state;
+      } catch {
+        return structuredClone(defaults);
+      }
+    }
+
+    let customItems = loadCustomItems();
+    let state = loadState();
+    let filter = "all";
+
+    const listsEl = document.getElementById("lists");
+    const progressBar = document.getElementById("progressBar");
+    const statsText = document.getElementById("statsText");
+    const filterHint = document.getElementById("filterHint");
+    const footerText = document.getElementById("footerText");
+    const addForm = document.getElementById("addForm");
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
+
+    function save() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    }
+
+    function totalItems() {
+      return Object.keys(state).length;
+    }
+
+    function checkedCount() {
+      return Object.values(state).filter((s) => s.checked).length;
+    }
+
+    function updateStats() {
+      const total = totalItems();
+      const done = checkedCount();
+      const pct = total ? Math.round((done / total) * 100) : 0;
+      progressBar.style.width = pct + "%";
+      statsText.textContent = done + " de " + total + " · " + pct + "%";
+      filterHint.textContent =
+        filter === "all" ? "Todos" : filter === "pending" ? "Só o que falta" : "Só os feitos";
+      footerText.textContent = "Salvo neste aparelho · " + total + " itens";
+    }
+
+    function render() {
+      listsEl.innerHTML = "";
+      const catalog = buildCatalog();
+
+      for (const section of catalog) {
+        if (section.id === "outros" && section.items.length === 0) continue;
+
+        const sectionEl = document.createElement("section");
+        sectionEl.innerHTML = `<h2 class="section-title">${escapeHtml(section.title)}</h2>`;
+        const list = document.createElement("div");
+        list.className = "list";
+
+        let visible = 0;
+
+        for (const item of section.items) {
+          const s = state[item.id] || { qty: item.qty, checked: false };
+          if (!state[item.id]) state[item.id] = s;
+
+          const matches =
+            filter === "all" ||
+            (filter === "pending" && !s.checked) ||
+            (filter === "done" && s.checked);
+
+          const row = document.createElement("article");
+          row.className =
+            "item" +
+            (item.custom ? " custom" : "") +
+            (s.checked ? " checked" : "") +
+            (matches ? "" : " hidden");
+          row.dataset.id = item.id;
+
+          const safeName = escapeHtml(item.name);
+          const unitHtml = item.unit ? `<span class="unit">${escapeHtml(item.unit)}</span>` : "";
+          const receiptNote = RECEIPT_BOUGHT[item.id]?.note;
+          const displayNote = receiptNote || item.note || (item.custom ? "adicionado por você" : "");
+          const noteHtml = displayNote ? `<p class="hint">${escapeHtml(displayNote)}</p>` : "";
+          const removeHtml = item.custom
+            ? `<button type="button" class="remove" aria-label="Remover ${safeName}">×</button>`
+            : "";
+
+          row.innerHTML = `
+            <button class="check" type="button" aria-label="Marcar ${safeName}" aria-pressed="${s.checked}">
+              <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="20 6 9 17 4 12"></polyline>
+              </svg>
+            </button>
+            <div class="meta">
+              <p class="name">${safeName}</p>
+              ${noteHtml}
+            </div>
+            <div class="qty">
+              <button type="button" class="minus" aria-label="Diminuir ${safeName}" ${s.qty <= 0 ? "disabled" : ""}>−</button>
+              <div class="qty-value" aria-live="polite">${s.qty}${unitHtml}</div>
+              <button type="button" class="plus" aria-label="Aumentar ${safeName}">+</button>
+            </div>
+            ${removeHtml}
+          `;
+
+          if (matches) visible += 1;
+          list.appendChild(row);
+        }
+
+        if (visible === 0) {
+          sectionEl.style.display = "none";
+        }
+
+        sectionEl.appendChild(list);
+        listsEl.appendChild(sectionEl);
+      }
+
+      updateStats();
+    }
+
+    listsEl.addEventListener("click", (e) => {
+      const itemEl = e.target.closest(".item");
+      if (!itemEl) return;
+      const id = itemEl.dataset.id;
+
+      if (e.target.closest(".remove")) {
+        if (!confirm("Remover este item da lista?")) return;
+        customItems = customItems.filter((item) => item.id !== id);
+        delete state[id];
+        saveCustomItems();
+        save();
+        render();
+        return;
+      }
+
+      if (e.target.closest(".check") || e.target.closest(".meta")) {
+        state[id].checked = !state[id].checked;
+        save();
+        render();
+        return;
+      }
+
+      if (e.target.closest(".plus")) {
+        state[id].qty += 1;
+        save();
+        render();
+        return;
+      }
+
+      if (e.target.closest(".minus")) {
+        state[id].qty = Math.max(0, state[id].qty - 1);
+        save();
+        render();
+      }
+    });
+
+    document.querySelector(".filters").addEventListener("click", (e) => {
+      const btn = e.target.closest(".filter");
+      if (!btn) return;
+      filter = btn.dataset.filter;
+      document.querySelectorAll(".filter").forEach((b) => b.classList.toggle("active", b === btn));
+      render();
+    });
+
+    addForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const name = document.getElementById("newName").value.trim();
+      const sectionId = document.getElementById("newSection").value;
+      const qty = Math.max(0, Math.floor(Number(document.getElementById("newQty").value) || 0));
+      if (!name) return;
+
+      const id = "custom-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7);
+      customItems.push({
+        id,
+        name,
+        qty: qty || 1,
+        unit: "",
+        sectionId,
+        custom: true,
+      });
+      state[id] = { qty: qty || 1, checked: false };
+      saveCustomItems();
+      save();
+      addForm.reset();
+      document.getElementById("newQty").value = "1";
+      document.getElementById("newSection").value = sectionId;
+      filter = "all";
+      document.querySelectorAll(".filter").forEach((b) =>
+        b.classList.toggle("active", b.dataset.filter === "all")
+      );
+      render();
+      document.getElementById("newName").focus();
+    });
+
+    function itemNameById(id) {
+      for (const section of BASE_CATALOG) {
+        const found = section.items.find((item) => item.id === id);
+        if (found) return found.name;
+      }
+      const custom = customItems.find((item) => item.id === id);
+      return custom ? custom.name : id;
+    }
+
+    function applyReceipt({ updateQty = true } = {}) {
+      for (const [id, info] of Object.entries(RECEIPT_BOUGHT)) {
+        if (!state[id]) state[id] = { qty: info.qty, checked: false };
+        state[id].checked = true;
+        if (updateQty) state[id].qty = info.qty;
+      }
+      localStorage.setItem(CUPOM_APPLIED_KEY, "1");
+      save();
+      render();
+    }
+
+    function showMissingFromList() {
+      const missing = [];
+      for (const section of BASE_CATALOG) {
+        for (const item of section.items) {
+          if (!RECEIPT_BOUGHT[item.id]) missing.push(item.name);
+        }
+      }
+      const box = document.getElementById("missingBox");
+      if (!missing.length) {
+        box.hidden = false;
+        box.innerHTML = "Nada faltou da lista original no cupom.";
+        return;
+      }
+      box.hidden = false;
+      box.innerHTML =
+        "<span>Ainda não vieram no cupom:</span> " +
+        escapeHtml(missing.join(" · "));
+    }
+
+    document.getElementById("applyReceipt").addEventListener("click", () => {
+      applyReceipt({ updateQty: true });
+      filter = "done";
+      document.querySelectorAll(".filter").forEach((b) =>
+        b.classList.toggle("active", b.dataset.filter === "done")
+      );
+      render();
+    });
+
+    document.getElementById("showMissing").addEventListener("click", () => {
+      showMissingFromList();
+    });
+
+    document.getElementById("resetChecks").addEventListener("click", () => {
+      if (!confirm("Desmarcar todos os itens?")) return;
+      for (const id of Object.keys(state)) state[id].checked = false;
+      save();
+      render();
+    });
+
+    document.getElementById("resetAll").addEventListener("click", () => {
+      if (!confirm("Voltar todas as quantidades ao valor original?")) return;
+      for (const id of Object.keys(state)) {
+        state[id].qty = defaultQtyFor(id);
+      }
+      save();
+      render();
+    });
+
+    // No primeiro acesso deste aparelho/link, já aplica o cupom
+    if (!localStorage.getItem(CUPOM_APPLIED_KEY) && !localStorage.getItem(STORAGE_KEY)) {
+      applyReceipt({ updateQty: true });
+    } else {
+      render();
+    }
+  </script>
+</body>
+</html>

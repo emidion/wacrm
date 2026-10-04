@@ -298,6 +298,98 @@
       margin-top: 1px;
     }
 
+    .add-panel {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 14px;
+      margin: 4px 0 16px;
+      animation: rise 0.55s ease 0.1s both;
+    }
+
+    .add-panel h2 {
+      font-family: "Fraunces", Georgia, serif;
+      font-size: 1.2rem;
+      margin: 0 0 10px;
+      color: var(--bg-deep);
+    }
+
+    .add-form {
+      display: grid;
+      gap: 8px;
+    }
+
+    .add-row {
+      display: grid;
+      grid-template-columns: 1fr 88px;
+      gap: 8px;
+    }
+
+    .add-form input,
+    .add-form select {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #f7fbf8;
+      border-radius: 12px;
+      padding: 12px 12px;
+      font: inherit;
+      font-weight: 700;
+      color: var(--ink);
+      outline: none;
+    }
+
+    .add-form input:focus,
+    .add-form select:focus {
+      border-color: #6ea38b;
+      box-shadow: 0 0 0 3px rgba(47, 125, 91, 0.15);
+    }
+
+    .add-form button[type="submit"] {
+      border: 0;
+      border-radius: 14px;
+      background: var(--accent);
+      color: #fffaf7;
+      font: inherit;
+      font-weight: 800;
+      font-size: 1rem;
+      padding: 13px 12px;
+      cursor: pointer;
+      transition: transform 0.15s ease, background 0.2s ease;
+    }
+
+    .add-form button[type="submit"]:active {
+      transform: scale(0.98);
+      background: var(--accent-press);
+    }
+
+    .item {
+      position: relative;
+    }
+
+    .item.custom {
+      grid-template-columns: auto 1fr auto auto;
+    }
+
+    .remove {
+      width: 36px;
+      height: 36px;
+      border: 0;
+      border-radius: 50%;
+      background: #f7e4de;
+      color: var(--accent-press);
+      font-size: 1.1rem;
+      font-weight: 800;
+      line-height: 1;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+    }
+
+    .remove:active {
+      transform: scale(0.92);
+    }
+
     .actions {
       display: flex;
       gap: 8px;
@@ -374,6 +466,22 @@
       <button class="filter" data-filter="done" type="button">Feitos</button>
     </div>
 
+    <section class="add-panel" aria-label="Adicionar item">
+      <h2>Adicionar item</h2>
+      <form class="add-form" id="addForm">
+        <input id="newName" name="name" type="text" placeholder="Nome do item" required autocomplete="off" />
+        <div class="add-row">
+          <select id="newSection" name="section" aria-label="Categoria">
+            <option value="alimentos">Alimentos</option>
+            <option value="higiene">Higiene e limpeza</option>
+            <option value="outros">Outros</option>
+          </select>
+          <input id="newQty" name="qty" type="number" min="0" step="1" value="1" inputmode="numeric" aria-label="Quantidade" />
+        </div>
+        <button type="submit">Adicionar na lista</button>
+      </form>
+    </section>
+
     <main id="lists"></main>
 
     <div class="actions">
@@ -381,13 +489,14 @@
       <button type="button" class="danger" id="resetAll">Zerar quantidades</button>
     </div>
 
-    <footer>Salvo neste aparelho · 29 itens</footer>
+    <footer id="footerText">Salvo neste aparelho</footer>
   </div>
 
   <script>
     const STORAGE_KEY = "lista-compras-v1";
+    const CUSTOM_KEY = "lista-compras-custom-v1";
 
-    const CATALOG = [
+    const BASE_CATALOG = [
       {
         id: "alimentos",
         title: "Alimentos",
@@ -429,26 +538,86 @@
           { id: "papel-graxa", name: "Papel graxa", qty: 1, unit: "" },
         ],
       },
+      {
+        id: "outros",
+        title: "Outros",
+        items: [],
+      },
     ];
 
-    const defaults = {};
-    for (const section of CATALOG) {
-      for (const item of section.items) {
-        defaults[item.id] = { qty: item.qty, checked: false };
+    function baseDefaults() {
+      const defaults = {};
+      for (const section of BASE_CATALOG) {
+        for (const item of section.items) {
+          defaults[item.id] = { qty: item.qty, checked: false };
+        }
+      }
+      return defaults;
+    }
+
+    function loadCustomItems() {
+      try {
+        const raw = localStorage.getItem(CUSTOM_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+          .filter((item) => item && item.id && item.name)
+          .map((item) => ({
+            id: String(item.id),
+            name: String(item.name),
+            qty: Math.max(0, Number(item.qty) || 1),
+            unit: item.unit ? String(item.unit) : "",
+            sectionId: ["alimentos", "higiene", "outros"].includes(item.sectionId)
+              ? item.sectionId
+              : "outros",
+            custom: true,
+          }));
+      } catch {
+        return [];
       }
     }
 
+    function saveCustomItems() {
+      localStorage.setItem(CUSTOM_KEY, JSON.stringify(customItems));
+    }
+
+    function buildCatalog() {
+      return BASE_CATALOG.map((section) => ({
+        ...section,
+        items: [
+          ...section.items.map((item) => ({ ...item, custom: false })),
+          ...customItems.filter((item) => item.sectionId === section.id),
+        ],
+      }));
+    }
+
+    function defaultQtyFor(id) {
+      const base = baseDefaults()[id];
+      if (base) return base.qty;
+      const custom = customItems.find((item) => item.id === id);
+      return custom ? custom.qty : 1;
+    }
+
     function loadState() {
+      const defaults = baseDefaults();
+      for (const item of customItems) {
+        defaults[item.id] = { qty: item.qty, checked: false };
+      }
+
       try {
         const raw = localStorage.getItem(STORAGE_KEY);
         if (!raw) return structuredClone(defaults);
+
         const parsed = JSON.parse(raw);
         const state = structuredClone(defaults);
-        for (const id of Object.keys(state)) {
-          if (parsed[id]) {
-            state[id].qty = Math.max(0, Number(parsed[id].qty) || 0);
-            state[id].checked = Boolean(parsed[id].checked);
-          }
+
+        // Preserva marcações e quantidades já editadas no aparelho
+        for (const id of Object.keys(parsed)) {
+          if (!parsed[id] || typeof parsed[id] !== "object") continue;
+          if (!(id in state)) continue;
+          state[id].qty = Math.max(0, Number(parsed[id].qty) || 0);
+          state[id].checked = Boolean(parsed[id].checked);
         }
         return state;
       } catch {
@@ -456,6 +625,7 @@
       }
     }
 
+    let customItems = loadCustomItems();
     let state = loadState();
     let filter = "all";
 
@@ -463,13 +633,23 @@
     const progressBar = document.getElementById("progressBar");
     const statsText = document.getElementById("statsText");
     const filterHint = document.getElementById("filterHint");
+    const footerText = document.getElementById("footerText");
+    const addForm = document.getElementById("addForm");
+
+    function escapeHtml(value) {
+      return String(value)
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;");
+    }
 
     function save() {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
     }
 
     function totalItems() {
-      return Object.keys(defaults).length;
+      return Object.keys(state).length;
     }
 
     function checkedCount() {
@@ -484,48 +664,67 @@
       statsText.textContent = done + " de " + total + " · " + pct + "%";
       filterHint.textContent =
         filter === "all" ? "Todos" : filter === "pending" ? "Só o que falta" : "Só os feitos";
+      footerText.textContent = "Salvo neste aparelho · " + total + " itens";
     }
 
     function render() {
       listsEl.innerHTML = "";
+      const catalog = buildCatalog();
 
-      for (const section of CATALOG) {
+      for (const section of catalog) {
+        if (section.id === "outros" && section.items.length === 0) continue;
+
         const sectionEl = document.createElement("section");
-        sectionEl.innerHTML = `<h2 class="section-title">${section.title}</h2>`;
+        sectionEl.innerHTML = `<h2 class="section-title">${escapeHtml(section.title)}</h2>`;
         const list = document.createElement("div");
         list.className = "list";
 
         let visible = 0;
 
         for (const item of section.items) {
-          const s = state[item.id];
+          const s = state[item.id] || { qty: item.qty, checked: false };
+          if (!state[item.id]) state[item.id] = s;
+
           const matches =
             filter === "all" ||
             (filter === "pending" && !s.checked) ||
             (filter === "done" && s.checked);
 
           const row = document.createElement("article");
-          row.className = "item" + (s.checked ? " checked" : "") + (matches ? "" : " hidden");
+          row.className =
+            "item" +
+            (item.custom ? " custom" : "") +
+            (s.checked ? " checked" : "") +
+            (matches ? "" : " hidden");
           row.dataset.id = item.id;
 
-          const unitHtml = item.unit ? `<span class="unit">${item.unit}</span>` : "";
-          const noteHtml = item.note ? `<p class="hint">${item.note}</p>` : "";
+          const safeName = escapeHtml(item.name);
+          const unitHtml = item.unit ? `<span class="unit">${escapeHtml(item.unit)}</span>` : "";
+          const noteHtml = item.note
+            ? `<p class="hint">${escapeHtml(item.note)}</p>`
+            : item.custom
+              ? `<p class="hint">adicionado por você</p>`
+              : "";
+          const removeHtml = item.custom
+            ? `<button type="button" class="remove" aria-label="Remover ${safeName}">×</button>`
+            : "";
 
           row.innerHTML = `
-            <button class="check" type="button" aria-label="Marcar ${item.name}" aria-pressed="${s.checked}">
+            <button class="check" type="button" aria-label="Marcar ${safeName}" aria-pressed="${s.checked}">
               <svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
                 <polyline points="20 6 9 17 4 12"></polyline>
               </svg>
             </button>
             <div class="meta">
-              <p class="name">${item.name}</p>
+              <p class="name">${safeName}</p>
               ${noteHtml}
             </div>
             <div class="qty">
-              <button type="button" class="minus" aria-label="Diminuir ${item.name}" ${s.qty <= 0 ? "disabled" : ""}>−</button>
+              <button type="button" class="minus" aria-label="Diminuir ${safeName}" ${s.qty <= 0 ? "disabled" : ""}>−</button>
               <div class="qty-value" aria-live="polite">${s.qty}${unitHtml}</div>
-              <button type="button" class="plus" aria-label="Aumentar ${item.name}">+</button>
+              <button type="button" class="plus" aria-label="Aumentar ${safeName}">+</button>
             </div>
+            ${removeHtml}
           `;
 
           if (matches) visible += 1;
@@ -547,6 +746,16 @@
       const itemEl = e.target.closest(".item");
       if (!itemEl) return;
       const id = itemEl.dataset.id;
+
+      if (e.target.closest(".remove")) {
+        if (!confirm("Remover este item da lista?")) return;
+        customItems = customItems.filter((item) => item.id !== id);
+        delete state[id];
+        saveCustomItems();
+        save();
+        render();
+        return;
+      }
 
       if (e.target.closest(".check") || e.target.closest(".meta")) {
         state[id].checked = !state[id].checked;
@@ -577,6 +786,36 @@
       render();
     });
 
+    addForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const name = document.getElementById("newName").value.trim();
+      const sectionId = document.getElementById("newSection").value;
+      const qty = Math.max(0, Math.floor(Number(document.getElementById("newQty").value) || 0));
+      if (!name) return;
+
+      const id = "custom-" + Date.now().toString(36) + "-" + Math.random().toString(36).slice(2, 7);
+      customItems.push({
+        id,
+        name,
+        qty: qty || 1,
+        unit: "",
+        sectionId,
+        custom: true,
+      });
+      state[id] = { qty: qty || 1, checked: false };
+      saveCustomItems();
+      save();
+      addForm.reset();
+      document.getElementById("newQty").value = "1";
+      document.getElementById("newSection").value = sectionId;
+      filter = "all";
+      document.querySelectorAll(".filter").forEach((b) =>
+        b.classList.toggle("active", b.dataset.filter === "all")
+      );
+      render();
+      document.getElementById("newName").focus();
+    });
+
     document.getElementById("resetChecks").addEventListener("click", () => {
       if (!confirm("Desmarcar todos os itens?")) return;
       for (const id of Object.keys(state)) state[id].checked = false;
@@ -587,7 +826,7 @@
     document.getElementById("resetAll").addEventListener("click", () => {
       if (!confirm("Voltar todas as quantidades ao valor original?")) return;
       for (const id of Object.keys(state)) {
-        state[id].qty = defaults[id].qty;
+        state[id].qty = defaultQtyFor(id);
       }
       save();
       render();
